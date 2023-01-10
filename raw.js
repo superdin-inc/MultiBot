@@ -1,4 +1,4 @@
-let ver = "1.4.3";
+let ver = "1.5.1";
 
 process.stdout.write("\u001bc");
 const { spawn: s } = require("child_process");
@@ -96,7 +96,11 @@ var newbot = e => {
 	try {
 		let bot = s(
 			"node",
-			[/*e + "/" + */ require("/" + e + "/package.json").main],
+			[
+				/*e + "/" + */ process.cwd() +
+					"/" +
+					require("./" + e + "/package.json").main,
+			],
 			{
 				cwd: process.cwd() + "/" + e,
 				env: { ...process.env, FORCE_COLOR: true },
@@ -165,7 +169,14 @@ var newbot = e => {
 		};
 		return bot;
 	} catch (a) {
-		console.log("Cannot spawn '" + e + "'");
+		console.log(
+			"Cannot spawn '" +
+				e +
+				"'" +
+				(process.argv.includes("--debug")
+					? ": " + a
+					: "\n  - Run node with --debug to see the detailed error.")
+		);
 	}
 };
 (() => {
