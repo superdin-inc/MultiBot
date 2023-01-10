@@ -44,8 +44,8 @@ var checkUpdate = () => {
 				.on("data", d => (body += d))
 				.on("end", () => {
 					if (
-						Buffer.from(body) !=
-						fs.readFileSync(require.resolve(process.argv[1]))
+						Buffer.from(body).length !=
+						fs.readFileSync(require.resolve(process.argv[1])).length
 					) {
 						console.log("Updating...");
 						try {
@@ -56,6 +56,7 @@ var checkUpdate = () => {
 						} catch (e) {
 							console.log("Failed to apply new update : " + e);
 						}
+						/*
 						console.log("Restarting...");
 						cp.spawn(
 							process.argv[0],
@@ -64,8 +65,7 @@ var checkUpdate = () => {
 								cwd: process.cwd(),
 								stdio: "inherit",
 							}
-						);
-						setTimeout(process.exit, 5000);
+						);*/
 					} else console.log("No update found!");
 				})
 				.on("error", e => {
@@ -169,7 +169,7 @@ var newbot = e => {
 	}
 };
 (() => {
-	var dir = fs.readdirSync(process.cwd()).filter(e => !e.endsWith(".js"));
+	let dir = fs.readdirSync(process.cwd()).filter(e => !e.endsWith(".js"));
 	console.log("MultiBot v" + ver + " initiating...");
 	checkUpdate();
 	if (dir.length > 0) console.log("Bots found : " + dir.join(", "));
@@ -186,6 +186,7 @@ var newbot = e => {
 			),
 		dir.length * 1000
 	);
+	let uptInt = setInterval(checkUpdate, 50000);
 	process.stdin.on("data", e => {
 		stack.push(e.toString("utf-8"));
 		if (stack.join("").endsWith("\n") || stack.join("").endsWith("\r\n\r"))
