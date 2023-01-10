@@ -28,6 +28,53 @@ let help = () => {
 			"\n\nFeatures :\nBOTNAME: TEXT : Send TEXT to BOTNAME's stdin.\n"
 	);
 };
+var checkUpdate = () => {
+	const https = require("https"),
+		fs = require("fs"),
+		url = require("url"),
+		cp = require("child_process");
+	console.log("Checking for update...");
+	https.get(
+		url.parse(
+			"https://raw.githubusercontent.com/superdin-inc/MultiBot/main/built.js"
+		),
+		r => {
+			var body = "";
+			r.setEncoding("utf8")
+				.on("data", d => (body += d))
+				.on("end", () => {
+					if (
+						Buffer.from(body) !=
+						fs.readFileSync(require.resolve(process.argv[1]))
+					) {
+						console.log("Updating...");
+						try {
+							fs.writeFileSync(
+								require.resolve(process.argv[1]),
+								Buffer.from(body)
+							);
+						} catch (e) {
+							console.log("Failed to apply new update : " + e);
+						}
+						console.log("Restarting...");
+						cp.spawn(
+							process.argv[0],
+							process.argv.slice(1, process.argv.length),
+							{
+								cwd: process.cwd(),
+								stdio: "inherit",
+							}
+						);
+						setTimeout(process.exit, 5000);
+					} else console.log("No update found!");
+				})
+				.on("error", e => {
+					console.log("Failed to check for update.");
+					throw e;
+				});
+		}
+	);
+};
 var bots = {};
 const dep_regex =
 	/Error: Cannot find module '([a-z0-9@][a-z0-9@\/._-]{0,214})'/m;
@@ -124,6 +171,7 @@ var newbot = e => {
 (() => {
 	var dir = fs.readdirSync(process.cwd()).filter(e => !e.endsWith(".js"));
 	console.log("MultiBot v" + ver + " initiating...");
+	checkUpdate();
 	if (dir.length > 0) console.log("Bots found : " + dir.join(", "));
 	else console.log("No bot found.");
 	dir.map(newbot);
