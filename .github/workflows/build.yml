@@ -22,7 +22,7 @@ jobs:
         cache: 'npm'
         cache-dependency-path: build/package-lock.json
     - run: npx google-closure-compiler raw.js --js_output_file built.js
-    - run: node compiled
+    - run: node built
     - name: Commit files
       id: commit
       run: |
