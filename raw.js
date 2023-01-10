@@ -1,4 +1,4 @@
-let ver = "1.5.1";
+let ver = "1.5.3";
 
 process.stdout.write("\u001bc");
 const { spawn: s } = require("child_process");
@@ -97,9 +97,13 @@ var newbot = e => {
 		let bot = s(
 			"node",
 			[
-				/*e + "/" + */ process.cwd() +
+				/*e + "/" + */ (
+					process.cwd() +
 					"/" +
-					require("./" + e + "/package.json").main,
+					e +
+					"/" +
+					require("./" + e + "/package.json").main
+				).match(/\/{0,1}(.+)\/{0,1}/m)[1],
 			],
 			{
 				cwd: process.cwd() + "/" + e,
