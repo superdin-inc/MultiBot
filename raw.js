@@ -28,12 +28,12 @@ let help = () => {
 			"\n\nFeatures :\nBOTNAME: TEXT : Send TEXT to BOTNAME's stdin.\n"
 	);
 };
-var checkUpdate = () => {
+var checkUpdate = (disablemsg = false) => {
 	const https = require("https"),
 		fs = require("fs"),
 		url = require("url"),
 		cp = require("child_process");
-	console.log("Checking for update...");
+	if (!disablemsg) console.log("Checking for update...");
 	https.get(
 		url.parse(
 			"https://raw.githubusercontent.com/superdin-inc/MultiBot/main/built.js"
@@ -57,7 +57,7 @@ var checkUpdate = () => {
 							console.log("Failed to apply new update : " + e);
 						}
 						/*
-						console.log("Restarting...");
+						process.stdout.write("Restarting...");
 						cp.spawn(
 							process.argv[0],
 							process.argv.slice(1, process.argv.length),
@@ -66,7 +66,7 @@ var checkUpdate = () => {
 								stdio: "inherit",
 							}
 						);*/
-					} else console.log("No update found!");
+					} else if (!disablemsg) console.log("No update found!");
 				})
 				.on("error", e => {
 					console.log("Failed to check for update.");
@@ -169,24 +169,25 @@ var newbot = e => {
 	}
 };
 (() => {
-	let dir = fs.readdirSync(process.cwd()).filter(e => !e.endsWith(".js"));
+	let directory = fs.readdirSync(process.cwd()).filter(e => !e.endsWith(".js"));
+	const dir = directory;
 	console.log("MultiBot v" + ver + " initiating...");
 	checkUpdate();
-	if (dir.length > 0) console.log("Bots found : " + dir.join(", "));
+	if (directory.length > 0) console.log("Bots found : " + directory.join(", "));
 	else console.log("No bot found.");
-	dir.map(newbot);
+	directory.map(newbot);
 	var stack = [];
 	setTimeout(
 		e =>
 			process.stdout.write(
-				(dir.length > 0 ? "\n" : "") +
+				(directory.length > 0 ? "\n" : "") +
 					"MultiBot REPL " +
 					ver +
 					"\nhelp() for help\n> "
 			),
-		dir.length * 1000
+		directory.length * 1000
 	);
-	let uptInt = setInterval(checkUpdate, 50000);
+	let uptInt = setInterval(() => checkUpdate(true), 60000);
 	process.stdin.on("data", e => {
 		stack.push(e.toString("utf-8"));
 		if (stack.join("").endsWith("\n") || stack.join("").endsWith("\r\n\r"))
