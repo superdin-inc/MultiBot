@@ -1,10 +1,13 @@
-let ver = "1.5.4";
+//! let require, process; //closure compiler spoof
+let ver = "1.5.6";
 
 process.stdout.write("\u001bc");
 const { spawn: s } = require("child_process");
 const fs = require("fs");
-var installedDeps = (installing = kills = []),
+var installedDeps = [],
 	lastConsoleFrom,
+	kills = [],
+	installing = [],
 	lastErrorTime = {};
 var npm = {
 	installing: [],
@@ -78,12 +81,16 @@ var checkUpdate = (disablemsg = false) => {
 var bots = {};
 const dep_regex =
 	/Error: Cannot find module '([a-z0-9@][a-z0-9@\/._-]{0,214})'/m;
+/**
+ * This is a function where type checking is disabled.
+ * @suppress {suspiciousCode}
+ */
 var newbot = e => {
 	console.log("Starting " + e + "...");
 	let onClose = a => {
 		if (installing.includes(e)) return;
 		if (kills.includes(e)) {
-			kills[kills.findIndex(ae => ae == e)] == undefined;
+			kills[kills.findIndex(ae => ae == e)] = undefined;
 		}
 		if (Date.now() - lastErrorTime[e] < 60000)
 			console.log(e + " crashed multiple times within 60 seconds, stopping...");
@@ -97,13 +104,13 @@ var newbot = e => {
 		let bot = s(
 			"node",
 			[
-				/*e + "/" + */ (
-					process.cwd() +
-					"/" +
-					e +
-					"/" +
-					require("./" + e + "/package.json").main
-				).match(/\/{0,1}(.+)\/{0,1}/m)[1],
+				/*process.cwd() + "/" +*/
+				require.resolve(
+					"./" +
+						(e + "/" + require("./" + e + "/package.json").main).match(
+							/\/{0,1}(.+)\/{0,1}/m
+						)[1]
+				),
 			],
 			{
 				cwd: process.cwd() + "/" + e,
@@ -116,7 +123,7 @@ var newbot = e => {
 			lastConsoleFrom = e;
 		});
 		bot.stderr.on("data", a => {
-			missing = a.toString("utf-8").match(dep_regex);
+			let missing = a.toString("utf-8").match(dep_regex);
 			if (missing != null) {
 				console.log(
 					'Error: Dependency "' +
@@ -184,12 +191,16 @@ var newbot = e => {
 	}
 };
 (() => {
-	let directory = fs.readdirSync(process.cwd()).filter(e => !e.endsWith(".js"));
+	let directory = fs
+		.readdirSync(process.cwd(), { withFileTypes: true })
+		.filter(item => item.isDirectory())
+		.map(item => item.name);
 	const dir = directory;
 	console.log("MultiBot v" + ver + " initiating...");
-	if(!process.argv.includes('--no_update')) {
-          checkUpdate();
-          console.log('  - To disable update check, add --no_update on startup')
+	if (!process.argv.includes("--no_update")) {
+		checkUpdate();
+		console.log("  - To disable update check, add --no_update on startup");
+	} else console.log("  - Update checker disabled with --no_update tag.");
 	if (directory.length > 0) console.log("Bots found : " + directory.join(", "));
 	else console.log("No bot found.");
 	directory.map(newbot);
@@ -204,12 +215,13 @@ var newbot = e => {
 			),
 		directory.length * 1000
 	);
-	process.argv.includes('--no_update')||setInterval(() => checkUpdate(true), 60000);
+	process.argv.includes("--no_update") ||
+		setInterval(() => checkUpdate(true), 60000);
 	process.stdin.on("data", e => {
 		stack.push(e.toString("utf-8"));
 		if (stack.join("").endsWith("\n") || stack.join("").endsWith("\r\n\r"))
 			try {
-				specific = e.toString("utf-8").match(/^(.+): (.+)/m);
+				let specific = e.toString("utf-8").match(/^(.+): (.+)/m);
 				if (specific != null && bots[specific[1]] != undefined) {
 					bots[specific[1]].raw.stdin.write(specific[2]);
 				} else console.log(eval(stack.join("")));
