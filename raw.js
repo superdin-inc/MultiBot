@@ -191,29 +191,29 @@ var newbot = e => {
 	}
 };
 (() => {
-	let directory = fs
+	/** @noalias */
+	let dir = fs
 		.readdirSync(process.cwd(), { withFileTypes: true })
 		.filter(item => item.isDirectory())
 		.map(item => item.name);
-	const dir = directory;
 	console.log("MultiBot v" + ver + " initiating...");
 	if (!process.argv.includes("--no_update")) {
 		checkUpdate();
 		console.log("  - To disable update check, add --no_update on startup");
 	} else console.log("  - Update checker disabled with --no_update tag.");
-	if (directory.length > 0) console.log("Bots found : " + directory.join(", "));
+	if (dir.length > 0) console.log("Bots found : " + dir.join(", "));
 	else console.log("No bot found.");
-	directory.map(newbot);
+	dir.map(newbot);
 	var stack = [];
 	setTimeout(
 		e =>
 			process.stdout.write(
-				(directory.length > 0 ? "\n" : "") +
+				(dir.length > 0 ? "\n" : "") +
 					"MultiBot REPL " +
 					ver +
 					"\nhelp() for help\n> "
 			),
-		directory.length * 1000
+		dir.length * 1000
 	);
 	process.argv.includes("--no_update") ||
 		setInterval(() => checkUpdate(true), 60000);
