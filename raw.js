@@ -1,4 +1,4 @@
-let ver = "1.5.3";
+let ver = "1.5.4";
 
 process.stdout.write("\u001bc");
 const { spawn: s } = require("child_process");
@@ -187,7 +187,9 @@ var newbot = e => {
 	let directory = fs.readdirSync(process.cwd()).filter(e => !e.endsWith(".js"));
 	const dir = directory;
 	console.log("MultiBot v" + ver + " initiating...");
-	checkUpdate();
+	if(!process.argv.includes('--no_update')) {
+          checkUpdate();
+          console.log('  - To disable update check, add --no_update on startup')
 	if (directory.length > 0) console.log("Bots found : " + directory.join(", "));
 	else console.log("No bot found.");
 	directory.map(newbot);
@@ -202,7 +204,7 @@ var newbot = e => {
 			),
 		directory.length * 1000
 	);
-	let uptInt = setInterval(() => checkUpdate(true), 60000);
+	process.argv.includes('--no_update')||setInterval(() => checkUpdate(true), 60000);
 	process.stdin.on("data", e => {
 		stack.push(e.toString("utf-8"));
 		if (stack.join("").endsWith("\n") || stack.join("").endsWith("\r\n\r"))
