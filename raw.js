@@ -1,12 +1,24 @@
+let ver = "2.1.1";
 const {
-	Woorker, //closure compiler will cause error with Worker name
+	Worker: Woorker, //closure compiler will cause error with Worker name
 	isMainThread,
 	parentPort,
 	workerData,
 } = require("node:worker_threads");
+var wexec = (name = "help", ...args) => {
+	return new Promise((resolve, reject) => {
+		const worker = new Woorker(require.resolve(process.argv[1]), {
+			workerData: [name, args],
+		});
+		worker.on("message", resolve);
+		worker.on("error", reject);
+		worker.on("exit", code => {
+			if (code !== 0)
+				reject(new Error(`${name} stopped with exit code ${code}`));
+		});
+	});
+};
 if (isMainThread) {
-	let ver = "2.0.1";
-
 	process.stdout.write("\u001bc");
 	const { spawn: s } = require("child_process");
 	const fs = require("fs"),
@@ -34,26 +46,10 @@ if (isMainThread) {
 			"MultiBot by 5UP3R_D1N\n\nHelp you cheat host multiple bots in 1 host! >:D\n\nCommands :\nbots : display bots or interact with bot" +
 				"\n - bots['BOTNAME'].restart : Restart the bot\n - bots['BOTNAME'].terminate : Terminate the bot\n - bots['BOTNAME'].raw : View raw child_process data, Do not modify directly!" +
 				"\nnewbot(folder_name) : Spawn new bot.\nnpm : Parralel npm port to this REPL\n - npm.install(pkg, cwd, opt) : Install new package, more options soon.\n - npm.installing : See whats installing" +
-				"\ncheckUpdate() : Check for update, this is automatic, require manual restart.\nwexec('FN_NAME')(args...) : Experimental, Execute specific worker." +
+				"\ncheckUpdate() : Check for update, this is automatic, require manual restart.\nwexec('FN_NAME',args...) : Experimental, Execute specific worker." +
 				"\n\nHow to use :\nSimply put bot folder in this folder, as many folders as you want, it will automatically detect and start." +
 				"\n\nFeatures :\nBOTNAME: TEXT : Send TEXT to BOTNAME's stdin.\n"
 		);
-	};
-	var wexec = name => {
-		let work = (...args) => {
-			new Promise((resolve, reject) => {
-				const worker = new Woorker(require.resolve(process.argv[1]), {
-					workerData: [name, args],
-				});
-				worker.on("message", resolve);
-				worker.on("error", reject);
-				worker.on("exit", code => {
-					if (code !== 0)
-						reject(new Error(`${name} stopped with exit code ${code}`));
-				});
-			});
-		};
-		return work;
 	};
 	var checkUpdate = (disablemsg = false) => {
 		const https = require("https"),
@@ -227,12 +223,12 @@ if (isMainThread) {
 		setTimeout(
 			e =>
 				process.stdout.write(
-					(dir.length > 0 ? "\n" : "") +
+					(bots.length > 0 ? "\n" : "") +
 						"MultiBot REPL v" +
 						ver +
 						"\nhelp() for help\n> "
 				),
-			dir.length * 1000
+			bots.length * 1000
 		);
 		console.log(
 			process.argv.includes("--no_update")
@@ -258,16 +254,87 @@ if (isMainThread) {
 	})();
 } else {
 	let wname = workerData[0],
-		warg = workerData[1];
-	switch (wname) {
+		warg = workerData[1],
+		arg0 = workerData[1][0];
+	/*switch (wname) {
 		case "log":
 			console.log(...warg);
 			break;
+		case "newbotvm":
+			const vm = require("vm"),
+				fs = require("fs");
+			if (!warg[0].cwd) throw new Error("CWD not specified");
+			vm.runInNewContext(
+				fs
+					.readFileSync(warg[0].index || "index.js")
+					.toString("utf-8")
+					.replace(/require\((.*)\)/, "require('" + warg[0].index + "'+$1)"),
+				vm.createContext({ require })
+			);
+			parentPort.postMessage("VM " + warg[0].index + " exited.");
 		//Add more here
 		case null:
 		case "":
 			throw new Error("Worker name is not specified.");
 		default:
 			throw new Error("Worker " + wname + " not found.");
-	}
+	}*/
+	if (!wname) throw new Error("Worker name is not specified.");
+	let cmds = {
+		newbotvm: {
+			desc: "run new bot inside Worker's VM",
+			arg_usage: '{[index:"BOT_INDEX",]cwd:"BOT_FOLDER"}',
+			run: () => {
+				const vm = require("vm"),
+					fs = require("fs");
+				if (!warg[0].cwd) throw new Error("CWD not specified");
+				vm.runInNewContext(
+					fs
+						.readFileSync(warg[0].index || "index.js")
+						.toString("utf-8")
+						.replace(/require\((.*)\)/, "require('" + warg[0].index + "'+$1)"),
+					vm.createContext({ require })
+				);
+				parentPort.postMessage("VM " + warg[0].index + " exited.");
+			},
+		},
+		help: {
+			desc: "display this help",
+			arg_usage: "[cmdname]",
+			run: () => {
+				if (!arg0 || Object.keys(cmds).includes(arg0)) {
+					console.log(
+						"MultiBot::v" +
+							ver +
+							"::Worker." +
+							(arg0 ? arg0 + ".help" : "help") +
+							"\n" +
+							(arg0
+								? ` - ${arg0}\n  - Description :\n${cmds[arg0].desc
+										.split("\n")
+										.map(e => ">   " + e)
+										.join("\n")}\n  - Usage : wexec('${arg0}')(${
+										cmds[arg0].arg_usage
+								  })`
+								: Object.keys(cmds)
+										.map(
+											e =>
+												` - ${e}\n  - Description :\n${cmds[e].desc
+													.split("\n")
+													.map(e => "    | " + e)
+													.join("\n")}\n  - Usage : wexec('${e}')(${
+													cmds[e].arg_usage
+												})`
+										)
+										.join("\n"))
+					);
+				} else
+					console.log("MultiBot::v" + ver + "::Worker." + arg0 + ": Not found");
+			},
+		},
+		//add more here!
+	};
+	if (!Object.keys(cmds).includes(wname))
+		throw new Error("Worker " + wname + " not found.");
+	cmds[wname].run(...warg);
 }
