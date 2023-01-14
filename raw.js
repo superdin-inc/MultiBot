@@ -1,4 +1,4 @@
-let ver = "2.1.1";
+let ver = "2.1.2";
 const {
 	Worker: Woorker, //closure compiler will cause error with Worker name
 	isMainThread,
@@ -76,10 +76,12 @@ if (isMainThread) {
 									require.resolve(process.argv[1]),
 									Buffer.from(body)
 								);
+								process.stdout.write(
+									"Please restart manually to apply update!"
+								);
 							} catch (e) {
 								console.log("Failed to apply new update : " + e);
 							}
-							process.stdout.write("Please restart manually to apply update!");
 						} else if (!disablemsg) console.log("No update found!");
 					})
 					.on("error", e => {
