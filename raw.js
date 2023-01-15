@@ -1,4 +1,6 @@
-let ver = "2.1.2";
+let ver = "2.2.0",
+	news =
+		"NPM Port reworked\nFixed updater message glitch\nFixed worker help command hang when execute with await\nA bit of patches\nnewbot() now detect if that folder is not a bot, on startup massStart, this warning will be suppressed.";
 const {
 	Worker: Woorker, //closure compiler will cause error with Worker name
 	isMainThread,
@@ -27,10 +29,11 @@ if (isMainThread) {
 		lastConsoleFrom,
 		kills = [],
 		installing = [],
-		lastErrorTime = {};
-	var npm = {
+		lastErrorTime = {},
+		npm_cwd;
+	/*var npm = {
 		installing: [],
-		install: (pkg, cwd, opt) => {
+		install: (pkg = "", cwd, opt = "") => {
 			npm.installing.push(pkg);
 			require("child_process").exec(
 				(cwd ? "cd " + cwd + "&&" : "") + "npm i " + pkg + " " + opt,
@@ -40,7 +43,36 @@ if (isMainThread) {
 				}
 			);
 		},
-	};
+	};*/
+	var npm = new Proxy(
+		() => {
+			npm = s(/^win/.test(process.platform) ? "npm.cmd" : "npm", [], {
+				stdio: "inherit",
+			});
+		},
+		{
+			get: (t, p) => {
+				switch (p) {
+					case "setCwd":
+						return cwd => (npm_cwd = cwd);
+					case "cwd":
+						return () => npm_cwd;
+					default:
+						if (!npm_cwd)
+							throw new Error("NPM CWD not set, run npm.setCwd('CWD') to set.");
+						return (...pkg) => {
+							s(
+								(cwd ? "cd " + cwd + "&&" : "") +
+									(/^win/.test(process.platform) ? "npm.cmd" : "npm"),
+								[p, ...pkg],
+								{ stdio: "inherit" }
+							);
+							return "Executing npm " + p + " " + pkg.join(" ");
+						};
+				}
+			},
+		}
+	);
 	let help = () => {
 		console.log(
 			"MultiBot by 5UP3R_D1N\n\nHelp you cheat host multiple bots in 1 host! >:D\n\nCommands :\nbots : display bots or interact with bot" +
@@ -72,13 +104,17 @@ if (isMainThread) {
 						) {
 							console.log("Updating...");
 							try {
-								fs.writeFileSync(
+								fs.writeFile(
 									require.resolve(process.argv[1]),
-									Buffer.from(body)
+									Buffer.from(body),
+									e =>
+										process.stdout.write(
+											e
+												? "Failed to apply new update : " + e.message
+												: "Please restart manually to apply update!"
+										)
 								);
-								process.stdout.write(
-									"Please restart manually to apply update!"
-								);
+								Object.keys(bots).forEach(e => bots[e].terminate());
 							} catch (e) {
 								console.log("Failed to apply new update : " + e);
 							}
@@ -98,8 +134,7 @@ if (isMainThread) {
 	 * This is a function where type checking is disabled.
 	 * @suppress {suspiciousCode}
 	 */
-	var newbot = e => {
-		console.log("Starting " + e + "...");
+	var newbot = (e, suppressNotAbot = false) => {
 		let onClose = a => {
 			if (installing.includes(e)) return;
 			if (kills.includes(e)) {
@@ -116,6 +151,11 @@ if (isMainThread) {
 			}
 		};
 		try {
+			if (!fs.existsSync("./" + e + "/package.json")) {
+				if (!suppressNotAbot)
+					console.log(e + " is not a bot(Cannot find package.json).");
+				return undefined;
+			} else console.log("Starting " + e + "...");
 			let bot = s(
 				process.argv[0],
 				[
@@ -178,7 +218,7 @@ if (isMainThread) {
 						}
 					);
 				} else console.error(a.toString("utf-8"));
-				installing[npm.installing.findIndex(a => a == e)] = undefined;
+				//!installing[npm.installing.findIndex(a => a == e)] = undefined; NPM v1 only
 			});
 			bot.on("close", onClose);
 			bots[e] = {
@@ -218,17 +258,18 @@ if (isMainThread) {
 			checkUpdate();
 			console.log("  - To disable update check, add --no_update on startup");
 		} else console.log("  - Update checker disabled with --no_update tag.");
-		if (dir.length > 0) console.log("Bots found : " + dir.join(", "));
+		console.log("\n\nChangelog in v" + ver + " :\n" + news + "\n\n");
+		if (dir.length > 0) console.log("Directories found : " + dir.join(", "));
 		else console.log("No bot found.");
-		dir.map(newbot);
+		dir.forEach(e => newbot(e, true));
 		var stack = [];
 		setTimeout(
 			e =>
 				process.stdout.write(
 					(bots.length > 0 ? "\n" : "") +
-						"MultiBot REPL v" +
+						"repl\nMultiBot REPL v" +
 						ver +
-						"\nhelp() for help\n> "
+						"\n --help() for help--\n> "
 				),
 			bots.length * 1000
 		);
@@ -332,6 +373,7 @@ if (isMainThread) {
 					);
 				} else
 					console.log("MultiBot::v" + ver + "::Worker." + arg0 + ": Not found");
+				parentPort.postMessage(undefined);
 			},
 		},
 		//add more here!
@@ -339,4 +381,7 @@ if (isMainThread) {
 	if (!Object.keys(cmds).includes(wname))
 		throw new Error("Worker " + wname + " not found.");
 	cmds[wname].run(...warg);
+	parentPort.postMessage(
+		"Worker " + wname + " exited with no error or result."
+	);
 }
