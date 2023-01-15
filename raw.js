@@ -77,7 +77,7 @@ if (isMainThread) {
 		console.log(
 			"MultiBot by 5UP3R_D1N\n\nHelp you cheat host multiple bots in 1 host! >:D\n\nCommands :\nbots : display bots or interact with bot" +
 				"\n - bots['BOTNAME'].restart : Restart the bot\n - bots['BOTNAME'].terminate : Terminate the bot\n - bots['BOTNAME'].raw : View raw child_process data, Do not modify directly!" +
-				"\nnewbot(folder_name) : Spawn new bot.\nnpm : Parralel npm port to this REPL\n - npm.install(pkg, cwd, opt) : Install new package, more options soon.\n - npm.installing : See whats installing" +
+				"\nnewbot(folder_name) : Spawn new bot.\nnpm : Parralel npm port to this REPL\n - npm() : Get help for NPM." +
 				"\ncheckUpdate() : Check for update, this is automatic, require manual restart.\nwexec('FN_NAME',args...) : Experimental, Execute specific worker." +
 				"\n\nHow to use :\nSimply put bot folder in this folder, as many folders as you want, it will automatically detect and start." +
 				"\n\nFeatures :\nBOTNAME: TEXT : Send TEXT to BOTNAME's stdin.\n"
@@ -267,7 +267,7 @@ if (isMainThread) {
 			e =>
 				process.stdout.write(
 					(bots.length > 0 ? "\n" : "") +
-						"repl\nMultiBot REPL v" +
+						"\n> repl\nMultiBot REPL v" +
 						ver +
 						"\n --help() for help--\n> "
 				),
