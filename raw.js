@@ -1,6 +1,5 @@
-let ver = "2.2.0",
-	news =
-		"NPM Port reworked\nFixed updater message glitch\nFixed worker help command hang when execute with await\nA bit of patches\nnewbot() now detect if that folder is not a bot, on startup massStart, this warning will be suppressed.";
+let ver = "2.2.1",
+	news = "Fixed reworked npm spawn glitch on windows\nJust know that calling npm with uppercase is forbidden.";
 const {
 	Worker: Woorker, //closure compiler will cause error with Worker name
 	isMainThread,
@@ -24,13 +23,31 @@ if (isMainThread) {
 	process.stdout.write("\u001bc");
 	const { spawn: s } = require("child_process");
 	const fs = require("fs"),
-		REPL = require("repl");
+		REPL = require("repl"),
+		path = require("path");
 	var installedDeps = [],
 		lastConsoleFrom,
 		kills = [],
 		installing = [],
 		lastErrorTime = {},
-		npm_cwd;
+		npm_cwd,
+		npm_paths = [
+			"npm",
+			...Object.keys(process.env)
+				.map(e =>
+					process.env[e]
+						.split(";")
+						.map(e =>
+							fs.existsSync(path.join(e, "npm"))
+								? fs.existsSync(path.join(e, "npm", "npm"))
+									? path.join(e, "npm	", "npm")
+									: path.join(e, "npm")
+								: undefined
+						)
+				)
+				.flat(Infinity)
+				.filter(e => e !== undefined),
+		];
 	/*var npm = {
 		installing: [],
 		install: (pkg = "", cwd, opt = "") => {
@@ -46,28 +63,56 @@ if (isMainThread) {
 	};*/
 	var npm = new Proxy(
 		() => {
-			npm = s(/^win/.test(process.platform) ? "npm.cmd" : "npm", [], {
+			s(/^win/.test(process.platform) ? "npm.cmd" : "npm", [], {
 				stdio: "inherit",
-			});
+			}).on("close", () =>
+				console.log(
+					'Please note that commands are in javascript form\n  - "npm install <pkg>" will be "npm.install(\'pkg\')"'
+				)
+			);
 		},
 		{
 			get: (t, p) => {
 				switch (p) {
 					case "setCwd":
-						return cwd => (npm_cwd = cwd);
+						return cwd => (npm_cwd = path.resolve(cwd));
 					case "cwd":
 						return () => npm_cwd;
 					default:
 						if (!npm_cwd)
-							throw new Error("NPM CWD not set, run npm.setCwd('CWD') to set.");
+							throw new Error("npm CWD not set, run npm.setCwd('CWD') to set.");
 						return (...pkg) => {
-							s(
-								(cwd ? "cd " + cwd + "&&" : "") +
-									(/^win/.test(process.platform) ? "npm.cmd" : "npm"),
-								[p, ...pkg],
-								{ stdio: "inherit" }
-							);
-							return "Executing npm " + p + " " + pkg.join(" ");
+							let i = 0;
+							do {
+								try {
+									if (i == 0) console.log("Using main npm");
+									else
+										console.log(
+											"Using fallbacks from PATH env : " + npm_paths[i]
+										);
+									require("child_process").execSync(
+										"cd " +
+											npm_cwd +
+											"&&" +
+											npm_paths[i] +
+											" " +
+											p +
+											(pkg.length > 0 ? " " : "") +
+											pkg.join(" ")
+										//npm_paths[i],
+										//[p, ...pkg],
+										//{ stdio: "inherit", cwd: npm_cwd }
+									);
+									return (
+										"Executed npm " +
+										p +
+										(pkg.length > 0 ? " " : "") +
+										pkg.join(" ")
+									);
+								} catch (e) {
+									i++;
+								}
+							} while (i < npm_paths.length);
 						};
 				}
 			},
@@ -76,8 +121,8 @@ if (isMainThread) {
 	let help = () => {
 		console.log(
 			"MultiBot by 5UP3R_D1N\n\nHelp you cheat host multiple bots in 1 host! >:D\n\nCommands :\nbots : display bots or interact with bot" +
-				"\n - bots['BOTNAME'].restart : Restart the bot\n - bots['BOTNAME'].terminate : Terminate the bot\n - bots['BOTNAME'].raw : View raw child_process data, Do not modify directly!" +
-				"\nnewbot(folder_name) : Spawn new bot.\nnpm : Parralel npm port to this REPL\n - npm() : Get help for NPM." +
+				"\n - bots['BOTNAME'].restart() : Restart the bot\n - bots['BOTNAME'].terminate() : Terminate the bot\n - bots['BOTNAME'].raw : View raw child_process data, Do not modify directly!" +
+				"\nnewbot(folder_name) : Spawn new bot.\nnpm : Parralel npm port to this REPL\n - npm() : Get help for npm." +
 				"\ncheckUpdate() : Check for update, this is automatic, require manual restart.\nwexec('FN_NAME',args...) : Experimental, Execute specific worker." +
 				"\n\nHow to use :\nSimply put bot folder in this folder, as many folders as you want, it will automatically detect and start." +
 				"\n\nFeatures :\nBOTNAME: TEXT : Send TEXT to BOTNAME's stdin.\n"
@@ -218,7 +263,7 @@ if (isMainThread) {
 						}
 					);
 				} else console.error(a.toString("utf-8"));
-				//!installing[npm.installing.findIndex(a => a == e)] = undefined; NPM v1 only
+				//!installing[npm.installing.findIndex(a => a == e)] = undefined; npm v1 only
 			});
 			bot.on("close", onClose);
 			bots[e] = {
